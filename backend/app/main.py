@@ -43,8 +43,8 @@ updater_task = None
 
 @app.on_event("startup")
 async def startup_event():
-    global updater_task
-    updater_task = asyncio.create_task(beacons.beacon_updater(sio))
+    global updater_task # store updater_task so we can cancel it later
+    updater_task = asyncio.create_task(beacons.beacon_updater(sio)) # Start the beacon updater in background 
     print("Station Arcturus Backend started!")
 
 
@@ -56,6 +56,7 @@ async def shutdown_event():
     print("Station Arcturus Backend shutting down!")
 
 
+# HTTP endpoints
 @app.get("/")
 async def root():
     return {"message": "Station Arcturus Backend is running."}
