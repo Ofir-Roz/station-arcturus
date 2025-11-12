@@ -18,15 +18,31 @@ public class BeaconVisual : MonoBehaviour
         {
             Transform light = transform.Find("StatusLight");
             if (light != null)
+            {
                 statusLight = light.GetComponent<Renderer>();
+            }
+            else
+            {
+                statusLight = GetComponent<Renderer>();
+            }
         }
 
         // create emissive material
         if (statusLight != null)
         {
-            lightMaterial = new Material(Shader.Find("Standard"));
-            lightMaterial.EnableKeyword("_EMISSION");
-            statusLight.material = lightMaterial;
+            // Try URP shader first, fallback to Built-in Standard shader
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null)
+            {
+                shader = Shader.Find("Standard");
+            }
+
+            if (shader != null)
+            {
+                lightMaterial = new Material(shader);
+                lightMaterial.EnableKeyword("_EMISSION");
+                statusLight.material = lightMaterial;
+            }
         }
     }
 
@@ -40,7 +56,10 @@ public class BeaconVisual : MonoBehaviour
 
             Color emissiveColor = currentColor * pulse;
             lightMaterial.SetColor("_EmissionColor", emissiveColor);
-            lightMaterial.color = currentColor;
+
+            // Set base color for both URP and Built-in
+            lightMaterial.SetColor("_BaseColor", currentColor); // URP
+            lightMaterial.SetColor("_Color", currentColor); // Built-in
         }
 
         // Slowly rotate the beacon for visual effect
@@ -74,7 +93,12 @@ public class BeaconVisual : MonoBehaviour
         currentColor = color;
         if (lightMaterial != null)
         {
-            lightMaterial.color = color;
+            // Set base color (works for both URP and Built-in)
+            lightMaterial.SetColor("_BaseColor", color); // URP
+            lightMaterial.SetColor("_Color", color); // Built-in fallback
+
+            // Set emission color
+            lightMaterial.SetColor("_EmissionColor", color);
         }
     }
 }
