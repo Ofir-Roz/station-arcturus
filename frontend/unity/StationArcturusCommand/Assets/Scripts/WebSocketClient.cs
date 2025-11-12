@@ -1,10 +1,7 @@
 using System;
 using UnityEngine;
 using SocketIOClient;
-using SocketIOClient.Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using UnityEngine.Events;
-using System.Collections.Generic;
+using Newtonsoft.Json;
 
 public class WebSocketClient : MonoBehaviour
 {
@@ -85,17 +82,26 @@ public class WebSocketClient : MonoBehaviour
         {
             try
             {
-                // Parse the beacon update data
-                var jsonString = response.ToString();
-                var data = JsonUtility.FromJson<BeaconUpdateData>(jsonString);
+                // Socket.IO wraps the data in an array, so we get the JSON string and parse it
+                string jsonString = response.ToString();
 
-                // if jsonUtility fails, try Newtonsoft
-                if (data == null || data.beacons == null)
+                // Remove the outer array brackets if present
+                if (jsonString.StartsWith("[") && jsonString.EndsWith("]"))
                 {
-                    data = Newtonsoft.Json.JsonConvert.DeserializeObject<BeaconUpdateData>(jsonString);
+                    jsonString = jsonString.Substring(1, jsonString.Length - 2);
                 }
 
-                // invoke on Unity's main thread
+                // Deserialize using Newtonsoft.Json
+                var data = JsonConvert.DeserializeObject<BeaconUpdateData>(jsonString);
+
+                // Check for null data
+                if (data == null || data.beacons == null)
+                {
+                    Debug.LogError("Received null beacon data");
+                    return;
+                }
+
+                // Invoke on Unity's main thread
                 UnityThread.executeInUpdate(() =>
                 {
                     OnBeaconUpdate?.Invoke(data);
@@ -113,9 +119,20 @@ public class WebSocketClient : MonoBehaviour
         {
             try
             {
-                var jsonString = response.ToString();
-                var message = JObject.Parse(jsonString);
-                Debug.Log($"Server message: {message["message"]}");
+                string jsonString = response.ToString();
+
+                // Remove the outer array brackets if present
+                if (jsonString.StartsWith("[") && jsonString.EndsWith("]"))
+                {
+                    jsonString = jsonString.Substring(1, jsonString.Length - 2);
+                }
+
+                var data = JsonConvert.DeserializeObject<ConnectionStatus>(jsonString);
+
+                if (data != null)
+                {
+                    Debug.Log($"Server: {data.message}");
+                }
             }
             catch (Exception ex)
             {
@@ -191,56 +208,13 @@ public class WebSocketClient : MonoBehaviour
 public class BeaconUpdateData
 {
     public BeaconData[] beacons;
-    public float timestamp;
+    public float time; // Changed from 'timestamp' to match backend
 }
 
-// Helper class for Unity main thread execution
-public static class UnityThread
+// Data structure for connection status messages
+[Serializable]
+public class ConnectionStatus
 {
-    private static readonly Queue<Action> executionQueue = new Queue<Action>();
-
-    public static void executeInUpdate(Action action)
-    {
-        lock (executionQueue)
-        {
-            executionQueue.Enqueue(action);
-        }
-    }
-
-    static UnityThread()
-    {
-        UnityThreadDispatcher.Initialize();
-    }
-
-    internal static void Update()
-    {
-        lock (executionQueue)
-        {
-            while (executionQueue.Count > 0)
-            {
-                executionQueue.Dequeue().Invoke();
-            }
-        }
-    }
-}
-
-// Unity thread dispatcher component
-public class UnityThreadDispatcher : MonoBehaviour
-{
-    private static UnityThreadDispatcher instance;
-
-    public static void Initialize()
-    {
-        if (instance == null)
-        {
-            GameObject go = new GameObject("UnityThreadDispatcher");
-            instance = go.AddComponent<UnityThreadDispatcher>();
-            DontDestroyOnLoad(go);
-        }
-    }
-
-    void Update()
-    {
-        UnityThread.Update();
-    }
+    public string status;
+    public string message;
 }
