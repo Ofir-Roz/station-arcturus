@@ -152,3 +152,7 @@ ExportedObj/
 
 # But exclude specific Unity auto-generated meta files
 [Aa]ssets/[Aa]ssetStoreTools*/**/*.meta
+
+# Exclude TextMesh Pro (can be re-imported from Package Manager)
+**/[Tt]ext[Mm]esh?[Pp]ro/
+**/TextMesh?Pro.meta
