@@ -9,37 +9,83 @@ public class BeaconManager : MonoBehaviour
 {
     [Header("Backend Configuration")]
     [SerializeField] private string backendUrl = "http://localhost:8000";
-    [SerializeField] private float pollInterval = 2f; // poll every 2 seconds initially
+
+    [Header("Connection Mode")]
+    [SerializeField] private bool useWebSocket = true; // Default to WebSocket
+    [SerializeField] private float pollInterval = 2f; // Fallback polling interval
 
     [Header("Beacon Visualization")]
-    [SerializeField] private GameObject beaconPrefab;// we'll create this next
-    [SerializeField] private Transform beaconContainer; // Parent for all beacons
+    [SerializeField] private GameObject beaconPrefab;
+    [SerializeField] private Transform beaconContainer;
 
     [Header("Status")]
-    [SerializeField] private bool isConnected = false;
+    public bool isConnected = false; // Public for UI
     [SerializeField] private int beaconCount = 0;
 
-    // Store beacon GameObjects by their ID
+    // Store beacon GameObjects by ID
     private Dictionary<string, GameObject> beaconObjects = new Dictionary<string, GameObject>();
 
     // Store beacon data
     private Dictionary<string, BeaconData> currentBeacons = new Dictionary<string, BeaconData>();
 
+    // Reference to WebSocket client
+    private WebSocketClient webSocketClient;
+
     void Start()
     {
-        Debug.Log("Starting Beacon Manager...");
+        Debug.Log("BeaconManager starting...");
 
-        // Create beacon container if not assigned
+        // Create container for beacons if not set
         if (beaconContainer == null)
         {
             GameObject container = new GameObject("BeaconContainer");
             beaconContainer = container.transform;
         }
 
-        // Start polling for updates
-        StartCoroutine(PollForUpdates());
+        // Try to get or add WebSocket client component
+        webSocketClient = GetComponent<WebSocketClient>();
+        if (webSocketClient == null && useWebSocket)
+        {
+            // Add WebSocketClient component if not present
+            webSocketClient = gameObject.AddComponent<WebSocketClient>();
+        }
+
+        if (useWebSocket && webSocketClient != null)
+        {
+            Debug.Log("Using WebSocket connection mode");
+
+            // Subscribe to WebSocket events
+            webSocketClient.OnBeaconUpdate += HandleBeaconUpdate;
+            webSocketClient.OnConnected += HandleConnected;
+            webSocketClient.OnDisconnected += HandleDisconnected;
+        }
+        else
+        {
+            Debug.Log("Using HTTP polling mode");
+            StartCoroutine(PollForUpdates());
+        }
     }
 
+    // WebSocket event handlers
+    void HandleBeaconUpdate(BeaconUpdateData data)
+    {
+        Debug.Log($"Received beacon update via WebSocket: {data.beacons.Length} beacons");
+        UpdateBeacons(data.beacons);
+    }
+
+    void HandleConnected()
+    {
+        isConnected = true;
+        Debug.Log("Connected to backend!");
+    }
+
+    void HandleDisconnected()
+    {
+        isConnected = false;
+        Debug.LogWarning("Disconnected from backend!");
+    }
+
+    // HTTP Polling fallback (existing code)
     IEnumerator PollForUpdates()
     {
         while (true)
@@ -55,32 +101,27 @@ public class BeaconManager : MonoBehaviour
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
-            // Send the request
             yield return request.SendWebRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
                 isConnected = true;
-
-                // Parse the response
                 string jsonResponse = request.downloadHandler.text;
-                Debug.Log($"Received Beacon Data: {jsonResponse}");
 
                 try
                 {
-                    // parse JSON response
-                    BeaconResponse beaconResponse = JsonConvert.DeserializeObject<BeaconResponse>(jsonResponse);
-                    UpdateBeacons(beaconResponse.beacons);
+                    BeaconResponse response = JsonConvert.DeserializeObject<BeaconResponse>(jsonResponse);
+                    UpdateBeacons(response.beacons);
                 }
-                catch (System.Exception ex)
+                catch (System.Exception e)
                 {
-                    Debug.LogError($"Error parsing beacon data: {ex.Message}");
+                    Debug.LogError($"Failed to parse beacon data: {e.Message}");
                 }
             }
             else
             {
                 isConnected = false;
-                Debug.LogError($"Error fetching beacon data: {request.error}");
+                Debug.LogError($"Failed to fetch beacon data: {request.error}");
             }
         }
     }
@@ -91,7 +132,7 @@ public class BeaconManager : MonoBehaviour
 
         beaconCount = beacons.Length;
 
-        // track which beacons we've seen this update
+        // Track which beacons we've seen this update
         HashSet<string> seenBeacons = new HashSet<string>();
 
         foreach (BeaconData beacon in beacons)
@@ -109,7 +150,7 @@ public class BeaconManager : MonoBehaviour
                 CreateBeacon(beacon);
             }
 
-            // store/update beacon data
+            // Store/update beacon data
             currentBeacons[beacon.id] = beacon;
         }
 
@@ -138,47 +179,50 @@ public class BeaconManager : MonoBehaviour
             sphere.name = beacon.id;
             sphere.transform.parent = beaconContainer;
             sphere.transform.position = beacon.GetPosition();
-            sphere.transform.localScale = Vector3.one * 0.5f; // Make it smaller
+            sphere.transform.localScale = Vector3.one * 0.5f;
 
             // Set color based on status
             Renderer renderer = sphere.GetComponent<Renderer>();
-            renderer.material.color = beacon.GetStatusColor();
+            if (renderer != null)
+            {
+                renderer.material.color = beacon.GetStatusColor();
+            }
 
             beaconObjects[beacon.id] = sphere;
         }
         else
         {
-            // Use prefab if avilable
+            // Use prefab if available
             GameObject obj = Instantiate(beaconPrefab, beacon.GetPosition(), Quaternion.identity, beaconContainer);
             obj.name = beacon.id;
             beaconObjects[beacon.id] = obj;
 
             // Update visual status
-            UpdateBeaconVisuals(obj, beacon);
+            UpdateBeaconVisual(obj, beacon);
         }
 
-        Debug.Log($"Created beacon: {beacon.id}");
+        Debug.Log($"Created beacon: {beacon.id} at position {beacon.GetPosition()}");
     }
 
     void UpdateBeacon(BeaconData beacon)
     {
         if (beaconObjects.TryGetValue(beacon.id, out GameObject obj))
         {
-            // smoothly move to new position
+            // Smoothly move to new position
             obj.transform.position = Vector3.Lerp(
                 obj.transform.position,
                 beacon.GetPosition(),
-                Time.deltaTime * 5f     // adjust speed as needed
+                Time.deltaTime * 5f
             );
 
             // Update visual status
-            UpdateBeaconVisuals(obj, beacon);
+            UpdateBeaconVisual(obj, beacon);
         }
     }
 
-    void UpdateBeaconVisuals(GameObject obj, BeaconData beacon)
+    void UpdateBeaconVisual(GameObject obj, BeaconData beacon)
     {
-        // Try to use BeaconVisual component if available
+        // Try to use BeaconVisual component
         BeaconVisual visual = obj.GetComponent<BeaconVisual>();
         if (visual != null)
         {
@@ -186,7 +230,7 @@ public class BeaconManager : MonoBehaviour
         }
         else
         {
-            // Fallback to setting color directly on Renderer
+            // Fallback to simple color change
             Renderer renderer = obj.GetComponent<Renderer>();
             if (renderer != null)
             {
@@ -206,7 +250,6 @@ public class BeaconManager : MonoBehaviour
         }
     }
 
-
     // Public method to get beacon statistics
     public Dictionary<string, int> GetBeaconStats()
     {
@@ -218,15 +261,27 @@ public class BeaconManager : MonoBehaviour
             { "offline", 0 }
         };
 
-        foreach (var beacon in currentBeacons.Values)
+        foreach (BeaconData beacon in currentBeacons.Values)
         {
             stats["total"]++;
-            if (stats.ContainsKey(beacon.status.ToLower()))
+            string status = beacon.status.ToLower();
+            if (stats.ContainsKey(status))
             {
-                stats[beacon.status.ToLower()]++;
+                stats[status]++;
             }
         }
 
         return stats;
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (webSocketClient != null)
+        {
+            webSocketClient.OnBeaconUpdate -= HandleBeaconUpdate;
+            webSocketClient.OnConnected -= HandleConnected;
+            webSocketClient.OnDisconnected -= HandleDisconnected;
+        }
     }
 }
