@@ -178,10 +178,20 @@ public class BeaconManager : MonoBehaviour
 
     void UpdateBeaconVisuals(GameObject obj, BeaconData beacon)
     {
-        Renderer renderer = obj.GetComponent<Renderer>();
-        if (renderer != null)
+        // Try to use BeaconVisual component if available
+        BeaconVisual visual = obj.GetComponent<BeaconVisual>();
+        if (visual != null)
         {
-            renderer.material.color = beacon.GetStatusColor();
+            visual.SetStatus(beacon.status);
+        }
+        else
+        {
+            // Fallback to setting color directly on Renderer
+            Renderer renderer = obj.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.material.color = beacon.GetStatusColor();
+            }
         }
     }
 
