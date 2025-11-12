@@ -4,8 +4,8 @@ from enum import Enum
 
 class BeaconStatus(str, Enum):
     ACTIVE = "active"
-    INACTIVE = "inactive"
-    ERROR = "error"
+    DAMAGED = "damaged"
+    OFFLINE = "offline"
 
 
 class Beacon(BaseModel):
