@@ -1,5 +1,6 @@
 import asyncio
 import random
+import math
 import time
 from typing import Dict
 
@@ -15,26 +16,26 @@ def generate_initial_beacons(count: int = 8) -> Dict[str, Beacon]:
         beacon_id = f"BEACON-{i+1:04d}"
         beacon = Beacon(
             id=beacon_id,
-            x=round(random.uniform(-50, 50), 3),
-            y=round(random.uniform(0, 20), 3),
-            z=round(random.uniform(-50, 50), 3),
+            x=round(random.uniform(-100, 100), 3),  # Wider range for full sphere coverage
+            altitude=round(random.uniform(0, 8), 3),  # Altitude above surface
+            z=round(random.uniform(-100, 100), 3),  # Wider range
             status=random.choice(list(BeaconStatus)),
         )
         beacons[beacon_id] = beacon
-        print(f"Generated {beacon_id} at ({beacon.x}, {beacon.y}, {beacon.z}) with status {beacon.status}")
+        print(f"Generated {beacon_id} at ({beacon.x}, {beacon.altitude}, {beacon.z}) with status {beacon.status}")
     return beacons
 
 
 async def update_beacon_positions():
-    """Simulate small random beacon drift"""
+    """Simulate small random beacon drift - slower for planetary motion"""
     for beacon_id, beacon in beacons_data.items():
         if random.random() < 0.3:
-            beacon.x += round(random.uniform(-2, 2), 3)
-            beacon.y += round(random.uniform(-0.5, 0.5), 3)
-            beacon.z += round(random.uniform(-2, 2), 3)
-            beacon.x = max(-50, min(50, beacon.x))
-            beacon.y = max(0, min(20, beacon.y))
-            beacon.z = max(-50, min(50, beacon.z))
+            beacon.x += round(random.uniform(-0.5, 0.5), 3)  # Reduced drift
+            beacon.altitude += round(random.uniform(-0.1, 0.1), 3)  # Slower altitude change
+            beacon.z += round(random.uniform(-0.5, 0.5), 3)  # Reduced drift
+            beacon.x = max(-100, min(100, beacon.x))  # Wider bounds
+            beacon.altitude = max(0, min(10, beacon.altitude))  # Extended altitude
+            beacon.z = max(-100, min(100, beacon.z))  # Wider bounds
 
 
 async def update_beacons_statuses():
@@ -55,9 +56,9 @@ async def simulate_beacon_changes():
         if new_id not in beacons_data:
             beacons_data[new_id] = Beacon(
                 id=new_id,
-                x=round(random.uniform(-50, 50), 3),
-                y=round(random.uniform(0, 20), 3),
-                z=round(random.uniform(-50, 50), 3),
+                x=round(random.uniform(-100, 100), 3),  # Wider range
+                altitude=round(random.uniform(0, 8), 3),  # Adjusted altitude
+                z=round(random.uniform(-100, 100), 3),  # Wider range
                 status=random.choice(list(BeaconStatus)),
             )
             print(f"New beacon appeared: {new_id}")

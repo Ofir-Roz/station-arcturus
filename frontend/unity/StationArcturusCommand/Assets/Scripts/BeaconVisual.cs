@@ -8,6 +8,9 @@ public class BeaconVisual : MonoBehaviour
     [SerializeField] private float pulseSpeed = 2f;
     [SerializeField] private float pulseIntensity = 0.5f;
 
+    [Header("Planetary Mode")]
+    public bool alignToSurfaceNormal = true;
+
     private Color currentColor = Color.white;
     private Material lightMaterial;
     private float pulseTimer = 0f;
@@ -69,8 +72,18 @@ public class BeaconVisual : MonoBehaviour
             lightMaterial.SetColor("_Color", currentColor); // Built-in
         }
 
-        // Slowly rotate the beacon for visual effect
-        transform.Rotate(Vector3.up, 10f * Time.deltaTime);
+        // Rotation behavior depends on mode
+        if (alignToSurfaceNormal)
+        {
+            // In planetary mode, only rotate around local Y-axis (up direction)
+            // The parent BeaconManager already handles orientation toward surface normal
+            transform.Rotate(Vector3.up, 10f * Time.deltaTime, Space.Self);
+        }
+        else
+        {
+            // In flat mode, rotate around world up
+            transform.Rotate(Vector3.up, 10f * Time.deltaTime);
+        }
     }
 
     public void SetStatus(string status)

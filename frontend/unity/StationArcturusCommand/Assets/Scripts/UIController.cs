@@ -14,6 +14,10 @@ public class UIController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI offlineBeaconsText;
     [SerializeField] private Image connectionIndicator;
 
+    [Header("Planetary Display")]
+    [SerializeField] private TextMeshProUGUI planetNameText;
+    [SerializeField] private TextMeshProUGUI planetRadiusText;
+
     [Header("References")]
     [SerializeField] private BeaconManager beaconManager;
 
@@ -93,6 +97,18 @@ public class UIController : MonoBehaviour
         {
             offlineBeaconsText.text = $"Offline: {stats["offline"]}";
             offlineBeaconsText.color = Color.red;
+        }
+
+        // Update planetary info
+        if (planetNameText != null)
+        {
+            planetNameText.text = "Planet: Arcturus Prime";
+        }
+
+        if (planetRadiusText != null && beaconManager.planetController != null)
+        {
+            float radius = beaconManager.planetController.GetRadius();
+            planetRadiusText.text = $"Radius: {radius:F1} units";
         }
     }
 

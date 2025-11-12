@@ -14,6 +14,10 @@ public class BeaconManager : MonoBehaviour
     [SerializeField] private bool useWebSocket = true; // Default to WebSocket
     [SerializeField] private float pollInterval = 2f; // Fallback polling interval
 
+    [Header("Planetary System")]
+    public PlanetController planetController; // Reference to planet
+    [SerializeField] private bool usePlanetaryCoordinates = false; // Enable planetary mode
+
     [Header("Beacon Visualization")]
     [SerializeField] private GameObject beaconPrefab;
     [SerializeField] private Transform beaconContainer;
@@ -172,46 +176,97 @@ public class BeaconManager : MonoBehaviour
 
     void CreateBeacon(BeaconData beacon)
     {
+        // Calculate position and rotation based on mode
+        Vector3 position;
+        Quaternion rotation;
+
+        if (usePlanetaryCoordinates)
+        {
+            position = ProjectToSphereSurface(beacon);
+            Vector3 surfaceNormal = GetSurfaceNormal(position);
+            // Align beacon's Y-axis (up) with surface normal (outward from planet)
+            // This makes the base point toward planet core
+            rotation = Quaternion.FromToRotation(Vector3.up, surfaceNormal);
+        }
+        else
+        {
+            position = beacon.GetPosition();
+            rotation = Quaternion.identity;
+        }
+
+        GameObject beaconObj;
+
         if (beaconPrefab == null)
         {
             // Create a simple sphere if no prefab is set
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = beacon.id;
-            sphere.transform.parent = beaconContainer;
-            sphere.transform.position = beacon.GetPosition();
-            sphere.transform.localScale = Vector3.one * 0.5f;
+            beaconObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            beaconObj.name = beacon.id;
+            beaconObj.transform.parent = beaconContainer;
+            beaconObj.transform.position = position;
+            beaconObj.transform.rotation = rotation;
+            beaconObj.transform.localScale = Vector3.one * 0.5f;
 
             // Set color based on status
-            Renderer renderer = sphere.GetComponent<Renderer>();
+            Renderer renderer = beaconObj.GetComponent<Renderer>();
             if (renderer != null)
             {
                 renderer.material.color = beacon.GetStatusColor();
             }
-
-            beaconObjects[beacon.id] = sphere;
         }
         else
         {
             // Use prefab if available
-            GameObject obj = Instantiate(beaconPrefab, beacon.GetPosition(), Quaternion.identity, beaconContainer);
-            obj.name = beacon.id;
-            beaconObjects[beacon.id] = obj;
+            beaconObj = Instantiate(beaconPrefab, position, rotation, beaconContainer);
+            beaconObj.name = beacon.id;
 
             // Update visual status
-            UpdateBeaconVisual(obj, beacon);
+            UpdateBeaconVisual(beaconObj, beacon);
         }
 
-        Debug.Log($"Created beacon: {beacon.id} at position {beacon.GetPosition()}");
+        // Scale beacon relative to planet in planetary mode
+        if (usePlanetaryCoordinates && planetController != null)
+        {
+            float beaconScale = planetController.GetRadius() * 0.04f; // 4% of planet radius
+            beaconObj.transform.localScale = Vector3.one * beaconScale;
+        }
+
+        beaconObjects[beacon.id] = beaconObj;
+
+        Debug.Log($"Created beacon: {beacon.id} at position {position}");
     }
 
     void UpdateBeacon(BeaconData beacon)
     {
         if (beaconObjects.TryGetValue(beacon.id, out GameObject obj))
         {
+            // Calculate target position and rotation based on mode
+            Vector3 targetPosition;
+            Quaternion targetRotation;
+
+            if (usePlanetaryCoordinates)
+            {
+                targetPosition = ProjectToSphereSurface(beacon);
+                Vector3 surfaceNormal = GetSurfaceNormal(targetPosition);
+                // Align beacon's Y-axis (up) with surface normal (outward from planet)
+                targetRotation = Quaternion.FromToRotation(Vector3.up, surfaceNormal);
+            }
+            else
+            {
+                targetPosition = beacon.GetPosition();
+                targetRotation = Quaternion.identity;
+            }
+
             // Smoothly move to new position
             obj.transform.position = Vector3.Lerp(
                 obj.transform.position,
-                beacon.GetPosition(),
+                targetPosition,
+                Time.deltaTime * 5f
+            );
+
+            // Smoothly rotate to new orientation
+            obj.transform.rotation = Quaternion.Slerp(
+                obj.transform.rotation,
+                targetRotation,
                 Time.deltaTime * 5f
             );
 
@@ -272,6 +327,43 @@ public class BeaconManager : MonoBehaviour
         }
 
         return stats;
+    }
+
+    // Planetary Coordinate System Methods
+    // Projects 3D coordinates onto sphere surface with altitude
+    public Vector3 ProjectToSphereSurface(BeaconData beaconData)
+    {
+        // Create direction vector using ALL three coordinates for full sphere coverage
+        // Transform Y (altitude 0-8) to center around 0 for full sphere coverage
+        Vector3 direction = new Vector3(
+            beaconData.x,
+            (beaconData.y - 4f) * 10f,  // Center Y: 0→-40, 4→0, 8→+40
+            beaconData.z
+        );
+
+        // Normalize to get direction on sphere
+        if (direction.magnitude > 0.01f)
+        {
+            direction.Normalize();
+        }
+        else
+        {
+            // Handle beacon at origin - place at north pole
+            direction = Vector3.up;
+        }
+
+        // Position at planet surface + small altitude offset
+        float planetRadius = planetController != null ? planetController.GetRadius() : 30f;
+        float altitudeOffset = beaconData.y * 0.5f; // Small offset above surface
+        float radius = planetRadius + altitudeOffset;
+
+        return direction * radius;
+    }
+
+    // Get surface normal for beacon orientation (points outward from planet center)
+    public Vector3 GetSurfaceNormal(Vector3 beaconPosition)
+    {
+        return beaconPosition.normalized;
     }
 
     void OnDestroy()

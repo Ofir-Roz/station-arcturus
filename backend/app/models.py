@@ -10,16 +10,16 @@ class BeaconStatus(str, Enum):
 
 class Beacon(BaseModel):
     id: str
-    x: float
-    y: float
-    z: float
+    x: float          # Flat X coordinate
+    altitude: float   # Height above planet surface (renamed from 'y')
+    z: float          # Flat Z coordinate
     status: BeaconStatus
 
     def to_unity_dict(self):
         return {
             "id": self.id,
             "x": self.x,
-            "y": self.y,
+            "y": self.altitude,  # Send as 'y' for Unity compatibility
             "z": self.z,
             "status": self.status.value,
         }
