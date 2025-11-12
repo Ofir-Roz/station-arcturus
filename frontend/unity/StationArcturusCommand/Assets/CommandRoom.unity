@@ -1021,7 +1021,7 @@ MonoBehaviour:
   backendUrl: http://localhost:8000
   useWebSocket: 1
   pollInterval: 2
-  beaconPrefab: {fileID: 2152004016463132642, guid: 6f964f05bab803d4490877756c2eb86f, type: 3}
+  beaconPrefab: {fileID: 3413591577221979994, guid: f90f27284b37c564186a1dec45615e45, type: 3}
   beaconContainer: {fileID: 0}
   isConnected: 0
   beaconCount: 0

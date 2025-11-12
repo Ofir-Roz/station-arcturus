@@ -2,8 +2,9 @@ using UnityEngine;
 
 public class BeaconVisual : MonoBehaviour
 {
-    [Header("Beacon Components")]
+    [Header("Visual Components")]
     [SerializeField] private Renderer statusLight;
+    [SerializeField] private BeaconParticleController particleController;
     [SerializeField] private float pulseSpeed = 2f;
     [SerializeField] private float pulseIntensity = 0.5f;
 
@@ -25,6 +26,12 @@ public class BeaconVisual : MonoBehaviour
             {
                 statusLight = GetComponent<Renderer>();
             }
+        }
+
+        // Find particle controller if not assigned
+        if (particleController == null)
+        {
+            particleController = GetComponentInChildren<BeaconParticleController>();
         }
 
         // create emissive material
@@ -68,6 +75,12 @@ public class BeaconVisual : MonoBehaviour
 
     public void SetStatus(string status)
     {
+        // Set particle color based on status
+        if (particleController != null)
+        {
+            particleController.SetStatusColor(status);
+        }
+
         switch (status.ToLower())
         {
             case "active":
