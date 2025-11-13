@@ -39,5 +39,5 @@ public class BeaconResponse
 {
     public BeaconData[] beacons;
     public int count;
-    public float timestamp;
+    public float time;
 }
