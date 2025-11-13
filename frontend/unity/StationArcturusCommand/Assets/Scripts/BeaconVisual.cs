@@ -2,14 +2,10 @@ using UnityEngine;
 
 public class BeaconVisual : MonoBehaviour
 {
-    [Header("Visual Components")]
     [SerializeField] private Renderer statusLight;
     [SerializeField] private BeaconParticleController particleController;
     [SerializeField] private float pulseSpeed = 2f;
     [SerializeField] private float pulseIntensity = 0.5f;
-
-    [Header("Planetary Mode")]
-    public bool alignToSurfaceNormal = true;
 
     private Color currentColor = Color.white;
     private Material lightMaterial;
@@ -17,113 +13,58 @@ public class BeaconVisual : MonoBehaviour
 
     void Awake()
     {
-        // Find status light if not assigned
-        if (statusLight == null)
-        {
-            Transform light = transform.Find("StatusLight");
-            if (light != null)
-            {
-                statusLight = light.GetComponent<Renderer>();
-            }
-            else
-            {
-                statusLight = GetComponent<Renderer>();
-            }
-        }
+        if (statusLight == null) statusLight = GetComponent<Renderer>();
+        if (particleController == null) particleController = GetComponentInChildren<BeaconParticleController>();
 
-        // Find particle controller if not assigned
-        if (particleController == null)
-        {
-            particleController = GetComponentInChildren<BeaconParticleController>();
-        }
-
-        // create emissive material
         if (statusLight != null)
         {
-            // Try URP shader first, fallback to Built-in Standard shader
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-
-            if (shader != null)
-            {
-                lightMaterial = new Material(shader);
-                lightMaterial.EnableKeyword("_EMISSION");
-                statusLight.material = lightMaterial;
-            }
+            lightMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            lightMaterial.EnableKeyword("_EMISSION");
+            statusLight.material = lightMaterial;
         }
     }
 
     void Update()
     {
-        // Animate status light with pulsing effect
         if (lightMaterial != null)
         {
             pulseTimer += Time.deltaTime * pulseSpeed;
             float pulse = (Mathf.Sin(pulseTimer) * pulseIntensity) + 1f;
-
-            Color emissiveColor = currentColor * pulse;
-            lightMaterial.SetColor("_EmissionColor", emissiveColor);
-
-            // Set base color for both URP and Built-in
-            lightMaterial.SetColor("_BaseColor", currentColor); // URP
-            lightMaterial.SetColor("_Color", currentColor); // Built-in
+            lightMaterial.SetColor("_EmissionColor", currentColor * pulse);
+            lightMaterial.SetColor("_BaseColor", currentColor);
         }
-
-        // Rotation behavior depends on mode
-        if (alignToSurfaceNormal)
-        {
-            // In planetary mode, only rotate around local Y-axis (up direction)
-            // The parent BeaconManager already handles orientation toward surface normal
-            transform.Rotate(Vector3.up, 10f * Time.deltaTime, Space.Self);
-        }
-        else
-        {
-            // In flat mode, rotate around world up
-            transform.Rotate(Vector3.up, 10f * Time.deltaTime);
-        }
+        
+        transform.Rotate(Vector3.up, 10f * Time.deltaTime, Space.Self);
     }
 
     public void SetStatus(string status)
     {
-        // Set particle color based on status
-        if (particleController != null)
-        {
-            particleController.SetStatusColor(status);
-        }
+        particleController?.SetStatusColor(status);
 
         switch (status.ToLower())
         {
             case "active":
-                SetColor(Color.green);
-                pulseSpeed = 2f;
+                SetColor(Color.green, 2f);
                 break;
             case "damaged":
-                SetColor(Color.yellow);
-                pulseSpeed = 4f;
+                SetColor(Color.yellow, 4f);
                 break;
             case "offline":
-                SetColor(Color.red);
-                pulseSpeed = 0.5f;
+                SetColor(Color.red, 0.5f);
                 break;
             default:
-                SetColor(Color.white);
+                SetColor(Color.white, 2f);
                 break;
         }
     }
 
-    private void SetColor(Color color)
+    void SetColor(Color color, float speed)
     {
         currentColor = color;
+        pulseSpeed = speed;
         if (lightMaterial != null)
         {
-            // Set base color (works for both URP and Built-in)
-            lightMaterial.SetColor("_BaseColor", color); // URP
-            lightMaterial.SetColor("_Color", color); // Built-in fallback
-
-            // Set emission color
+            lightMaterial.SetColor("_BaseColor", color);
             lightMaterial.SetColor("_EmissionColor", color);
         }
     }
