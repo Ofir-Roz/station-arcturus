@@ -15,6 +15,10 @@ Beacons are tracked with x, altitude, and z coordinates, and can have different 
 
 ```
 station-arcturus/
+├── Builds/                           # Pre-built executables (recommended)
+│   ├── Windows/
+│   │   └── Station Arcturus Command Room.exe
+│   └── macOS.app/                    # macOS application bundle
 ├── frontend/
 │   └── unity/
 │       └── StationArcturusCommand/   # Unity 6000.2.10f1 project
@@ -38,21 +42,22 @@ station-arcturus/
 ### Prerequisites
 
 - **Python 3.8+** for the backend server
-- **Unity 6000.2.10f1** for the frontend (if you want to modify or run the Unity project)
+- **Unity 6000.2.10f1** (optional - only needed if you want to modify the Unity project)
 
-### Running the Application
+### Running the Application (Recommended)
+
+The easiest way to run Station Arcturus is using the pre-built executables.
 
 #### 1. Start the Backend Server
 
 ```bash
-# Navigate to the project root
-cd station-arcturus
+# Navigate to the backend directory
+cd station-arcturus/backend
 
-# Activate the virtual environment
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Navigate to backend
-cd backend
+# Create and activate a virtual environment (first time only)
+python -m venv .venv
+.venv\Scripts\activate  # On Windows
+# source .venv/bin/activate  # On macOS/Linux
 
 # Install dependencies (first time only)
 pip install -r requirements.txt
@@ -61,7 +66,7 @@ pip install -r requirements.txt
 python run.py
 ```
 
-The server will start on `http://127.0.0.1:8000` (may be localhost as well).
+The server will start on `http://127.0.0.1:8000`. (may be localhost as well).
 
 **Test the backend:**
 
@@ -69,7 +74,26 @@ The server will start on `http://127.0.0.1:8000` (may be localhost as well).
 - Check `http://127.0.0.1:8000/status` for server status
 - Access `http://127.0.0.1:8000/beacons` for beacon data
 
-#### 2. Run the Unity Frontend
+#### 2. Run the Pre-Built Frontend
+
+**Windows:**
+
+1. Navigate to `Builds/Windows/`
+2. Double-click `Station Arcturus Command Room.exe`
+3. The application will connect to the backend server automatically
+
+**macOS:**
+
+1. Navigate to `Builds/`
+2. Double-click `macOS.app`
+3. If you see a security warning, go to System Preferences > Security & Privacy and click "Open Anyway"
+4. The application will connect to the backend server automatically
+
+The 3D visualization will launch and connect to the backend server, displaying beacon positions in real-time.
+
+### Running from Unity Editor (Development Only)
+
+If you need to modify the Unity project:
 
 1. Open Unity Hub
 2. Add the project by selecting `frontend/unity/StationArcturusCommand`
@@ -131,7 +155,26 @@ The backend runs on port 8000 by default. CORS is configured to allow all origin
 
 ### Unity Configuration
 
-Update the WebSocket server URL in the Unity project if the backend is running on a different host/port.
+The pre-built executables are configured to connect to `http://127.0.0.1:8000` by default. If you need to change the server URL, you'll need to modify the Unity project and rebuild.
+
+## Troubleshooting
+
+### Windows
+
+- **Application won't start**: Make sure the backend server is running first
+- **Firewall warnings**: Allow the application through Windows Firewall if prompted
+- **Missing DLL errors**: Ensure all files in the `Builds/Windows/` folder remain together
+
+### macOS
+
+- **"Cannot be opened because it is from an unidentified developer"**: Right-click the app, select Open, then click Open in the dialog
+- **Security warning persists**: Go to System Preferences > Security & Privacy > General, and click "Open Anyway"
+- **Application won't start**: Verify the backend server is running on `http://127.0.0.1:8000`
+
+### Backend
+
+- **Port already in use**: Another application may be using port 8000. Stop it or modify the port in `backend/run.py`
+- **Module not found errors**: Ensure you've activated the virtual environment and installed all dependencies
 
 ## License
 

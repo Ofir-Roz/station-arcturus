@@ -36,11 +36,18 @@ The backend server manages beacon data for Station Arcturus, providing both REST
    cd backend
    ```
 
-2. **Create and activate a virtual environment** (if not already done at project level):
+2. **Create and activate a virtual environment:**
 
+   **Windows:**
    ```bash
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   .venv\Scripts\activate
+   ```
+
+   **macOS/Linux:**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
    ```
 
 3. **Install dependencies:**
@@ -64,6 +71,15 @@ The server will start on `http://127.0.0.1:8000`
 - Open `http://127.0.0.1:8000/ui` for the browser test client
 - Access `http://127.0.0.1:8000/beacons` for beacon data via REST API
 - Check `http://127.0.0.1:8000/status` for server status
+
+## Using with Pre-Built Frontends
+
+The backend is designed to work with the pre-built Unity executables located in the `Builds/` folder at the project root. Simply start the backend server as described above, then run the appropriate executable for your platform:
+
+- **Windows**: Run `Builds/Windows/Station Arcturus Command Room.exe`
+- **macOS**: Run `Builds/macOS.app`
+
+The frontend will automatically connect to the backend server at `http://127.0.0.1:8000`.
 
 ## Development Notes
 
