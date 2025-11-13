@@ -204,7 +204,8 @@ public class BeaconManager : MonoBehaviour
             beaconObj.transform.parent = beaconContainer;
             beaconObj.transform.position = position;
             beaconObj.transform.rotation = rotation;
-            beaconObj.transform.localScale = Vector3.one * 0.5f;
+            // Make beacon thinner and taller: x=0.3, y=1.5, z=0.3
+            beaconObj.transform.localScale = new Vector3(0.3f, 1.5f, 0.3f);
 
             // Set color based on status
             Renderer renderer = beaconObj.GetComponent<Renderer>();
@@ -226,8 +227,9 @@ public class BeaconManager : MonoBehaviour
         // Scale beacon relative to planet in planetary mode
         if (usePlanetaryCoordinates && planetController != null)
         {
-            float beaconScale = planetController.GetRadius() * 0.04f; // 4% of planet radius
-            beaconObj.transform.localScale = Vector3.one * beaconScale;
+            float baseScale = planetController.GetRadius() * 0.04f; // 4% of planet radius
+            // Apply thin and tall proportions: thin on X/Z, tall on Y
+            beaconObj.transform.localScale = new Vector3(baseScale * 0.6f, baseScale * 3f, baseScale * 0.6f);
         }
 
         beaconObjects[beacon.id] = beaconObj;

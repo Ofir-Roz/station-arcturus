@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import socketio
 import asyncio
 import time
@@ -10,7 +11,25 @@ import time
 from . import beacons
 from . import events
 
-app = FastAPI(title="Station Arcturus Backend")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    updater_task = asyncio.create_task(beacons.beacon_updater(sio))
+    print("Station Arcturus Backend started!")
+    
+    yield
+    
+    # Shutdown
+    updater_task.cancel()
+    try:
+        await updater_task
+    except asyncio.CancelledError:
+        pass
+    print("Station Arcturus Backend shutting down!")
+
+
+app = FastAPI(title="Station Arcturus Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,23 +56,6 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 @app.get("/ui")
 async def ui():
     return FileResponse(static_dir / "test_client.html")
-
-updater_task = None
-
-
-@app.on_event("startup")
-async def startup_event():
-    global updater_task # store updater_task so we can cancel it later
-    updater_task = asyncio.create_task(beacons.beacon_updater(sio)) # Start the beacon updater in background 
-    print("Station Arcturus Backend started!")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    global updater_task
-    if updater_task:
-        updater_task.cancel()
-    print("Station Arcturus Backend shutting down!")
 
 
 # HTTP endpoints

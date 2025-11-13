@@ -5,16 +5,15 @@ public class OrbitalCameraController : MonoBehaviour
 {
     [Header("Target")]
     public Transform target; // Planet center
-    public float targetDistance = 80f;
+    public float targetDistance = 100f; // Start point
 
     [Header("Rotation")]
     public float rotationSpeed = 100f;
-    public float verticalRotationLimit = 85f;
-
+    public float verticalRotationLimit = 85f; 
     [Header("Zoom")]
     public float zoomSpeed = 10f;
     public float minDistance = 40f;
-    public float maxDistance = 150f;
+    public float maxDistance = 140f; //zooming out 
 
     [Header("Mouse Control")]
     public bool useMouseDrag = true;

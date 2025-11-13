@@ -27,15 +27,14 @@ def generate_initial_beacons(count: int = 8) -> Dict[str, Beacon]:
 
 
 async def update_beacon_positions():
-    """Simulate small random beacon drift - slower for planetary motion"""
     for beacon_id, beacon in beacons_data.items():
-        if random.random() < 0.3:
-            beacon.x += round(random.uniform(-0.5, 0.5), 3)  # Reduced drift
-            beacon.altitude += round(random.uniform(-0.1, 0.1), 3)  # Slower altitude change
-            beacon.z += round(random.uniform(-0.5, 0.5), 3)  # Reduced drift
-            beacon.x = max(-100, min(100, beacon.x))  # Wider bounds
-            beacon.altitude = max(0, min(10, beacon.altitude))  # Extended altitude
-            beacon.z = max(-100, min(100, beacon.z))  # Wider bounds
+        if random.random() < 0.7:
+            beacon.x += round(random.uniform(-2.5, 2.5), 3)
+            beacon.altitude += round(random.uniform(-0.5, 0.5), 3)
+            beacon.z += round(random.uniform(-2.5, 2.5), 3)
+            beacon.x = max(-100, min(100, beacon.x))
+            beacon.altitude = max(0, min(10, beacon.altitude))
+            beacon.z = max(-100, min(100, beacon.z))
 
 
 async def update_beacons_statuses():
@@ -49,20 +48,19 @@ async def update_beacons_statuses():
 
 
 async def simulate_beacon_changes():
-    """Occasionally add or remove beacons"""
     global beacons_data
-    if random.random() < 0.1 and len(beacons_data) < 15:
+    if random.random() < 0.1 and len(beacons_data) < 24:
         new_id = f"BEACON-{random.randint(1000, 9999)}"
         if new_id not in beacons_data:
             beacons_data[new_id] = Beacon(
                 id=new_id,
-                x=round(random.uniform(-100, 100), 3),  # Wider range
-                altitude=round(random.uniform(0, 8), 3),  # Adjusted altitude
-                z=round(random.uniform(-100, 100), 3),  # Wider range
+                x=round(random.uniform(-100, 100), 3),
+                altitude=round(random.uniform(0, 8), 3),
+                z=round(random.uniform(-100, 100), 3),
                 status=random.choice(list(BeaconStatus)),
             )
             print(f"New beacon appeared: {new_id}")
-    if random.random() < 0.1 and len(beacons_data) > 3:
+    if random.random() < 0.1 and len(beacons_data) > 6:
         beacon_to_remove = random.choice(list(beacons_data.keys()))
         del beacons_data[beacon_to_remove]
         print(f"Beacon Lost: {beacon_to_remove}")

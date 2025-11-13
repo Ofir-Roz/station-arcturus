@@ -11,7 +11,7 @@ class BeaconStatus(str, Enum):
 class Beacon(BaseModel):
     id: str
     x: float          # Flat X coordinate
-    altitude: float   # Height above planet surface (renamed from 'y')
+    altitude: float   # Height above planet surface
     z: float          # Flat Z coordinate
     status: BeaconStatus
 
