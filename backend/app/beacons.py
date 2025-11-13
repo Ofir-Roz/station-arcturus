@@ -7,6 +7,7 @@ from typing import Dict
 from .models import Beacon, BeaconStatus
 
 # Global in-memory store for beacons. This will be initialized by the app.
+# todo: In future, consider persisting to a database.
 beacons_data: Dict[str, Beacon] = {}
 
 
@@ -16,9 +17,9 @@ def generate_initial_beacons(count: int = 8) -> Dict[str, Beacon]:
         beacon_id = f"BEACON-{i+1:04d}"
         beacon = Beacon(
             id=beacon_id,
-            x=round(random.uniform(-100, 100), 3),  # Wider range for full sphere coverage
-            altitude=round(random.uniform(0, 8), 3),  # Altitude above surface
-            z=round(random.uniform(-100, 100), 3),  # Wider range
+            x=round(random.uniform(-100, 100), 3),  # range for full sphere coverage
+            altitude=round(random.uniform(0, 3), 3),  # Altitude above surface
+            z=round(random.uniform(-100, 100), 3),  
             status=random.choice(list(BeaconStatus)),
         )
         beacons[beacon_id] = beacon
@@ -28,12 +29,12 @@ def generate_initial_beacons(count: int = 8) -> Dict[str, Beacon]:
 
 async def update_beacon_positions():
     for beacon_id, beacon in beacons_data.items():
-        if random.random() < 0.7:
-            beacon.x += round(random.uniform(-2.5, 2.5), 3)
-            beacon.altitude += round(random.uniform(-0.5, 0.5), 3)
-            beacon.z += round(random.uniform(-2.5, 2.5), 3)
+        if random.random() < 0.5:
+            beacon.x += round(random.uniform(-20, 20), 3)
+            beacon.altitude += round(random.uniform(-0.05, 0.05), 3)
+            beacon.z += round(random.uniform(-20, 20), 3)
             beacon.x = max(-100, min(100, beacon.x))
-            beacon.altitude = max(0, min(10, beacon.altitude))
+            beacon.altitude = max(0, min(3, beacon.altitude))
             beacon.z = max(-100, min(100, beacon.z))
 
 
@@ -55,7 +56,7 @@ async def simulate_beacon_changes():
             beacons_data[new_id] = Beacon(
                 id=new_id,
                 x=round(random.uniform(-100, 100), 3),
-                altitude=round(random.uniform(0, 8), 3),
+                altitude=round(random.uniform(0, 3), 3),
                 z=round(random.uniform(-100, 100), 3),
                 status=random.choice(list(BeaconStatus)),
             )

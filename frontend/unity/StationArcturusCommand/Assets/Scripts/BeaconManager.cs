@@ -18,6 +18,12 @@ public class BeaconManager : MonoBehaviour
     public PlanetController planetController; // Reference to planet
     [SerializeField] private bool usePlanetaryCoordinates = false; // Enable planetary mode
 
+    [Header("Projection Tuning")]
+    [SerializeField] private float mapExtent = 100f; // backend coordinate ranges
+    [SerializeField] private float altitudeScale = 0.25f; // scale factor for backend altitude -> in-world offset
+    [SerializeField] private float minSurfaceBuffer = 0.01f; // minimum buffer above planet surface
+    [SerializeField] private float atmosphereSafetyMargin = 0.90f; // Keep beacons slightly under atmosphere shell
+
     [Header("Beacon Visualization")]
     [SerializeField] private GameObject beaconPrefab;
     [SerializeField] private Transform beaconContainer;
@@ -232,6 +238,32 @@ public class BeaconManager : MonoBehaviour
             beaconObj.transform.localScale = new Vector3(baseScale * 0.6f, baseScale * 3f, baseScale * 0.6f);
         }
 
+        // Ensure the visual sits above the planet's surface by offsetting by half the object's world height
+        // Reuse surfaceNormal if available, otherwise compute
+        Vector3 surfaceNormalForOffset = GetSurfaceNormal(position);
+        float halfHeight = GetWorldHalfHeight(beaconObj);
+        if (halfHeight > 0f)
+        {
+            position += surfaceNormalForOffset * halfHeight;
+            beaconObj.transform.position = position; // reapply position after adjusting for height
+        }
+
+        // Safety clamp to prevent penetrating the surface
+        float planetRadius = planetController != null ? planetController.GetRadius() : 30f;
+        float minRadius = planetRadius + minSurfaceBuffer; // use configurable buffer above surface
+        if (beaconObj.transform.position.magnitude < minRadius)
+        {
+            beaconObj.transform.position = beaconObj.transform.position.normalized * minRadius;
+        }
+
+        // Final sanity check - if it's still below the surface something is wrong
+        if (beaconObj.transform.position.magnitude < planetRadius)
+        {
+            Debug.LogWarning($"Beacon {beacon.id} computed inside planet radius: r={beaconObj.transform.position.magnitude} < planetRadius={planetRadius}");
+            // Force it outside minimally
+            beaconObj.transform.position = beaconObj.transform.position.normalized * minRadius;
+        }
+
         beaconObjects[beacon.id] = beaconObj;
 
         Debug.Log($"Created beacon: {beacon.id} at position {position}");
@@ -251,11 +283,37 @@ public class BeaconManager : MonoBehaviour
                 Vector3 surfaceNormal = GetSurfaceNormal(targetPosition);
                 // Align beacon's Y-axis (up) with surface normal (outward from planet)
                 targetRotation = Quaternion.FromToRotation(Vector3.up, surfaceNormal);
+                // add half world height so the mesh's base sits on surface rather than its center
+                float halfHeight = GetWorldHalfHeight(obj);
+                if (halfHeight > 0f)
+                {
+                    targetPosition += surfaceNormal * halfHeight;
+                }
+                // clamp to avoid intersections
+                float planetRadius = planetController != null ? planetController.GetRadius() : 30f;
+                float minRadius = planetRadius + minSurfaceBuffer;
+                if (targetPosition.magnitude < minRadius)
+                {
+                    targetPosition = targetPosition.normalized * minRadius;
+                }
+                // Sanity check
+                if (targetPosition.magnitude < planetController.GetRadius())
+                {
+                    Debug.LogWarning($"Target position for beacon {beacon.id} is inside the planet radius: r={targetPosition.magnitude}");
+                    targetPosition = targetPosition.normalized * minRadius;
+                }
             }
             else
             {
                 targetPosition = beacon.GetPosition();
                 targetRotation = Quaternion.identity;
+            }
+
+            // If object is currently inside the planet, snap it out to the minimum radius
+            float currentMinRadius = (planetController != null ? planetController.GetRadius() : 30f) + minSurfaceBuffer;
+            if (obj.transform.position.magnitude < currentMinRadius)
+            {
+                obj.transform.position = obj.transform.position.normalized * currentMinRadius;
             }
 
             // Smoothly move to new position
@@ -332,31 +390,46 @@ public class BeaconManager : MonoBehaviour
     }
 
     // Planetary Coordinate System Methods
-    // Projects 3D coordinates onto sphere surface with altitude
+    // Projects flat x,z coordinates to a point ON the sphere surface; altitude is applied as radial offset.
+    // - Backend sends: x and z in a flat coordinate system (expected roughly -100..100)
+    // - Altitude (y) is an offset above the surface and does not modify surface direction
+    // We map x->longitude, z->latitude so the flat coordinates become spherical coordinates
     public Vector3 ProjectToSphereSurface(BeaconData beaconData)
     {
-        // Create direction vector using ALL three coordinates for full sphere coverage
-        // Transform Y (altitude 0-8) to center around 0 for full sphere coverage
+        // Defensive defaults
+        float planetRadius = planetController != null ? planetController.GetRadius() : 30f;
+        float altitude = Mathf.Max(0f, beaconData.y); // ensure altitude is non-negative
+
+        // Map planar x,z ranges to [-1,1] expectations for longitude/latitude mapping
+        // The backend currently uses roughly -100..100 for x/z. Keep this constant for consistency.
+        float xNorm = Mathf.Clamp(beaconData.x / mapExtent, -1f, 1f);
+        float zNorm = Mathf.Clamp(beaconData.z / mapExtent, -1f, 1f);
+
+        // Longitude: full circle mapping from [-1,1] -> [-180,180]
+        float lon = xNorm * 180f * Mathf.Deg2Rad;
+        // Latitude: clamp to avoid going past poles [-90,90]
+        float lat = zNorm * 90f * Mathf.Deg2Rad;
+
+        // Convert spherical angles to cartesian direction
         Vector3 direction = new Vector3(
-            beaconData.x,
-            (beaconData.y - 4f) * 10f,  // Center Y: 0→-40, 4→0, 8→+40
-            beaconData.z
+            Mathf.Cos(lat) * Mathf.Cos(lon),
+            Mathf.Sin(lat),
+            Mathf.Cos(lat) * Mathf.Sin(lon)
         );
 
-        // Normalize to get direction on sphere
-        if (direction.magnitude > 0.01f)
-        {
-            direction.Normalize();
-        }
-        else
-        {
-            // Handle beacon at origin - place at north pole
-            direction = Vector3.up;
-        }
+        // Normalize direction to be safe
+        direction.Normalize();
 
-        // Position at planet surface + small altitude offset
-        float planetRadius = planetController != null ? planetController.GetRadius() : 30f;
-        float altitudeOffset = beaconData.y * 0.5f; // Small offset above surface
+        // Radius: planet surface + altitude (radial offset)
+        float altitudeOffset = altitude * altitudeScale; // scale altitude to world units; smaller to keep under atmosphere
+        // If planetController has atmosphere, clamp to be under the atmosphere
+        if (planetController != null)
+        {
+            // Use the already-computed planetRadius variable (declared at the top of this method) to avoid shadowing
+            float atmosphereOuterRadius = planetRadius * planetController.atmosphereThickness;
+            float maxAltitudeOffset = (atmosphereOuterRadius - planetRadius) * atmosphereSafetyMargin;
+            altitudeOffset = Mathf.Min(altitudeOffset, maxAltitudeOffset);
+        }
         float radius = planetRadius + altitudeOffset;
 
         return direction * radius;
@@ -366,6 +439,27 @@ public class BeaconManager : MonoBehaviour
     public Vector3 GetSurfaceNormal(Vector3 beaconPosition)
     {
         return beaconPosition.normalized;
+    }
+
+    // Compute half the height of the object's visible mesh in world space so that we can offset
+    // the object's center so the base sits on the planet surface (avoids sinking into the planet).
+    private float GetWorldHalfHeight(GameObject obj)
+    {
+        if (obj == null) return 0f;
+        // Combine bounds from all renderers in the object (and children) so complex prefabs are measured properly.
+        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
+        if (renderers != null && renderers.Length > 0)
+        {
+            Bounds combined = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+            {
+                combined.Encapsulate(renderers[i].bounds);
+            }
+            return combined.size.y * 0.5f;
+        }
+
+        // As a conservative fallback use lossyScale.y * 0.5f (assuming model height of 1 unit)
+        return obj.transform.lossyScale.y * 0.5f;
     }
 
     void OnDestroy()

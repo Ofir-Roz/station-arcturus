@@ -13,9 +13,9 @@ public class PlanetController : MonoBehaviour
 
     [Header("Atmosphere Settings")]
     public bool enableAtmosphere = true;
-    public Color atmosphereColor = new Color(0.4f, 0.6f, 1f, 0.2f); // Bluish with transparency
-    public float atmosphereThickness = 1.15f; // 1.15 = 15% larger than planet (higher/thicker)
-    public float atmosphereIntensity = 0.8f; // Glow intensity
+    public Color atmosphereColor = new Color(0.4f, 0.6f, 1f, 0.35f); // Bluish with slightly higher alpha for more opacity
+    public float atmosphereThickness = 1.35f; // increase radius: 35% larger than planet to give more room for beacons
+    public float atmosphereIntensity = 1.0f; // Increase glow intensity slightly for better visibility
     public float atmosphereFadepower = 2.0f; // Controls edge fade (higher = softer edges)
 
     private GameObject planetSphere;
@@ -95,7 +95,7 @@ public class PlanetController : MonoBehaviour
             atmosphereColor.r, 
             atmosphereColor.g, 
             atmosphereColor.b, 
-            atmosphereColor.a * 0.5f // Reduce alpha for softer look
+            atmosphereColor.a * 0.9f // Keep more alpha for a slightly more opaque atmosphere
         );
         atmosphereMat.SetColor("_BaseColor", baseColor);
         atmosphereMat.SetColor("_Color", baseColor);
@@ -103,9 +103,10 @@ public class PlanetController : MonoBehaviour
         // Strong emission for glow that fades naturally
         atmosphereMat.EnableKeyword("_EMISSION");
         Color emissionColor = new Color(
-            atmosphereColor.r * atmosphereIntensity * 1.5f,
-            atmosphereColor.g * atmosphereIntensity * 1.5f,
-            atmosphereColor.b * atmosphereIntensity * 1.5f
+            atmosphereColor.r * atmosphereIntensity * 1.2f,
+            atmosphereColor.g * atmosphereIntensity * 1.2f,
+            atmosphereColor.b * atmosphereIntensity * 1.2f,
+            1.0f
         );
         atmosphereMat.SetColor("_EmissionColor", emissionColor);
 
