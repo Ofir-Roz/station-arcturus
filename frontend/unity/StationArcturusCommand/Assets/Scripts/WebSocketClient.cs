@@ -36,6 +36,7 @@ public class WebSocketClient : MonoBehaviour
             try
             {
                 string json = response.ToString();
+                // todo: fix to detect JSON shape properly (not a technical debt)
                 if (json.StartsWith("[")) json = json.Substring(1, json.Length - 2);
                 
                 var data = JsonConvert.DeserializeObject<BeaconUpdateData>(json);
