@@ -49,7 +49,7 @@ beacons.beacons_data = beacons.generate_initial_beacons()
 # Register socket event handlers
 events.register_socket_handlers(sio)
 
-# Serve static test client
+# Serve a static test client
 static_dir = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 

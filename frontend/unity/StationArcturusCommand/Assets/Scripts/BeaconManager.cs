@@ -39,8 +39,8 @@ public class BeaconManager : MonoBehaviour
     {
         if (beacons == null) return;
 
+        // Track which beacons are present in the current update using a set
         HashSet<string> seenBeacons = new HashSet<string>();
-
         foreach (BeaconData beacon in beacons)
         {
             seenBeacons.Add(beacon.id);
