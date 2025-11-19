@@ -71,5 +71,5 @@ async def status():
 
 @app.get("/beacons")
 async def get_beacons():
-    beacon_list = [b.to_unity_dict() for b in beacons.beacons_data.values()]
+    beacon_list = list(beacons.beacon_list_unity_dict())
     return {"beacons": beacon_list, "count": len(beacon_list), "time": time.time()}
